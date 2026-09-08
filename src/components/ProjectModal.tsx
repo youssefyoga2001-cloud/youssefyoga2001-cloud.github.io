@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
-import { asset, type Project } from '../content'
+import { asset, posterFor, type Project } from '../content'
 
 // Deliberately not a native <dialog>: its `close` event proved unreliable, and a missed
 // event leaves the page scroll-locked with audio still playing. Every dismissal path
@@ -111,6 +111,7 @@ export function ProjectModal({
         <video
           key={project.id}
           src={asset(project.src)}
+          poster={posterFor(project)}
           controls
           autoPlay
           playsInline

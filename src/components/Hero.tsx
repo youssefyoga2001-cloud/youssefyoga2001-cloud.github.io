@@ -46,6 +46,7 @@ export function Hero() {
       <video
         ref={videoRef}
         src={asset('videos/Hero.mp4')}
+        poster={asset('videos/Hero.jpg')}
         muted
         playsInline
         preload="auto"

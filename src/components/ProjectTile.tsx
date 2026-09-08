@@ -1,9 +1,7 @@
 import { useRef, useState } from 'react'
 
-import { asset, type Project } from '../content'
+import { asset, posterFor, type Project } from '../content'
 import { useMediaQuery } from '../hooks/useMediaQuery'
-
-const DEFAULT_POSTER_AT = 0.3
 
 export function ProjectTile({
   project,
@@ -17,22 +15,15 @@ export function ProjectTile({
   const videoRef = useRef<HTMLVideoElement>(null)
   const hasFinePointer = useMediaQuery('(pointer: fine)')
   const [playing, setPlaying] = useState(false)
-  const [ready, setReady] = useState(false)
-
-  // No build-time poster images, so seek to a representative frame to paint one.
-  const seekToPoster = () => {
-    const video = videoRef.current
-    if (!video || !Number.isFinite(video.duration)) return
-    video.currentTime = video.duration * (project.posterAt ?? DEFAULT_POSTER_AT)
-  }
+  // The <video> carries no src until first hover, so a page load costs six poster
+  // images instead of six multi-megabyte videos.
+  const [wanted, setWanted] = useState(false)
 
   const start = () => {
-    const video = videoRef.current
-    if (!video) return
-    video
-      .play()
-      .then(() => setPlaying(true))
-      .catch(() => {})
+    setWanted(true)
+    // On the first hover the element has no src yet; the effect of setting `wanted`
+    // renders it, and onLoadedData below starts playback.
+    videoRef.current?.play().catch(() => {})
   }
 
   const stop = () => {
@@ -40,7 +31,6 @@ export function ProjectTile({
     if (!video) return
     video.pause()
     setPlaying(false)
-    seekToPoster()
   }
 
   return (
@@ -59,19 +49,35 @@ export function ProjectTile({
         className="relative block w-full cursor-pointer overflow-hidden rounded-sm bg-neutral-900"
       >
         <div className="aspect-video w-full">
-          <video
-            ref={videoRef}
-            src={asset(project.src)}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            onLoadedMetadata={seekToPoster}
-            onSeeked={() => setReady(true)}
-            className={`h-full w-full object-cover transition-[transform,opacity] duration-500 group-hover:scale-[1.03] ${
-              ready ? 'opacity-100' : 'opacity-0'
-            }`}
+          <img
+            src={posterFor(project)}
+            alt=""
+            loading={index < 2 ? 'eager' : 'lazy'}
+            decoding="async"
+            width={1280}
+            height={720}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
+          {wanted && (
+            <video
+              ref={videoRef}
+              src={asset(project.src)}
+              poster={posterFor(project)}
+              muted
+              loop
+              playsInline
+              preload="auto"
+              onLoadedData={() => {
+                videoRef.current
+                  ?.play()
+                  .then(() => setPlaying(true))
+                  .catch(() => {})
+              }}
+              className={`absolute inset-0 h-full w-full object-cover transition-[transform,opacity] duration-500 group-hover:scale-[1.03] ${
+                playing ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          )}
         </div>
 
         <span

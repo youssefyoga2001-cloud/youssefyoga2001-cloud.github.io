@@ -19,6 +19,9 @@ export const NAV_LINKS = [
  */
 export const asset = (path: string) => import.meta.env.BASE_URL + path
 
+/** Poster JPEG sitting next to each clip, e.g. videos/Kowens.mp4 -> videos/Kowens.jpg */
+export const posterFor = (project: Project) => asset(project.src.replace(/\.mp4$/, '.jpg'))
+
 export type Project = {
   id: string
   title: string
