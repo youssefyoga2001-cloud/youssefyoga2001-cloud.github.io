@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 
 import { asset, posterFor, type Project } from '../content'
+import { useInViewport } from '../hooks/useInViewport'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 
 export function ProjectTile({
@@ -14,27 +15,36 @@ export function ProjectTile({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hasFinePointer = useMediaQuery('(pointer: fine)')
+  const { ref: articleRef, inViewport } = useInViewport<HTMLElement>()
   const [playing, setPlaying] = useState(false)
-  // The <video> carries no src until first hover, so a page load costs six poster
-  // images instead of six multi-megabyte videos.
-  const [wanted, setWanted] = useState(false)
+  // play() resolves asynchronously; without this the video can start after the pointer
+  // has already left the tile.
+  const hovering = useRef(false)
 
   const start = () => {
-    setWanted(true)
-    // On the first hover the element has no src yet; the effect of setting `wanted`
-    // renders it, and onLoadedData below starts playback.
-    videoRef.current?.play().catch(() => {})
+    hovering.current = true
+    const video = videoRef.current
+    if (!video) return
+    video
+      .play()
+      .then(() => {
+        if (hovering.current) setPlaying(true)
+        else video.pause()
+      })
+      .catch(() => {})
   }
 
   const stop = () => {
+    hovering.current = false
     const video = videoRef.current
     if (!video) return
     video.pause()
+    video.currentTime = 0
     setPlaying(false)
   }
 
   return (
-    <article className="group">
+    <article ref={articleRef} className="group">
       <button
         type="button"
         onMouseEnter={hasFinePointer ? start : undefined}
@@ -49,6 +59,7 @@ export function ProjectTile({
         className="relative block w-full cursor-pointer overflow-hidden rounded-sm bg-neutral-900"
       >
         <div className="aspect-video w-full">
+          {/* Poster paints immediately; the video fades over it once hover starts. */}
           <img
             src={posterFor(project)}
             alt=""
@@ -58,7 +69,7 @@ export function ProjectTile({
             height={720}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
-          {wanted && (
+          {inViewport && (
             <video
               ref={videoRef}
               src={asset(project.src)}
@@ -66,13 +77,8 @@ export function ProjectTile({
               muted
               loop
               playsInline
-              preload="auto"
-              onLoadedData={() => {
-                videoRef.current
-                  ?.play()
-                  .then(() => setPlaying(true))
-                  .catch(() => {})
-              }}
+              // Cheap on these faststart files: ~0.5s of video, not the whole thing.
+              preload="metadata"
               className={`absolute inset-0 h-full w-full object-cover transition-[transform,opacity] duration-500 group-hover:scale-[1.03] ${
                 playing ? 'opacity-100' : 'opacity-0'
               }`}
