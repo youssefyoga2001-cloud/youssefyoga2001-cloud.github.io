@@ -28,7 +28,10 @@ export type Project = {
   category: string
   year: string
   src: string
-  /** Where in the clip to grab the still frame, 0-1. Tune per video. */
+  /**
+   * Which point in the clip (0-1) the committed poster JPEG was taken from. Not read at
+   * runtime — kept so posters can be regenerated from the same frame. See README.
+   */
   posterAt?: number
 }
 
